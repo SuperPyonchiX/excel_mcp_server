@@ -10,7 +10,12 @@
     "dev": "tsc && node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["mcp", "excel", "automation", "spreadsheet"],
+  "keywords": [
+    "mcp",
+    "excel",
+    "automation",
+    "spreadsheet"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
@@ -20,6 +25,7 @@
     "@modelcontextprotocol/sdk": "^1.17.1",
     "@types/node": "^24.1.0",
     "exceljs": "^4.4.0",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "zod-to-json-schema": "^3.24.6"
   }
 }

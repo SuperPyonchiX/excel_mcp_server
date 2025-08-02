@@ -8,17 +8,22 @@ import {
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 import ExcelJS from "exceljs";
 import fs from "fs/promises";
 import path from "path";
 
-// Zodスキーマ定義（詳細な説明付き）
+// MCP適切なスキーマ定義（Zodスキーマ）
 const CreateWorkbookSchema = z.object({
   filePath: z.string().describe("作成するExcelファイルの絶対パス（例: C:/Users/Username/Documents/report.xlsx）。ファイル拡張子は.xlsxである必要があります"),
 });
 
 const OpenWorkbookSchema = z.object({
   filePath: z.string().describe("開くExcelファイルの絶対パス。既存のファイルである必要があります"),
+});
+
+const GetWorkbookInfoSchema = z.object({
+  filePath: z.string().describe("情報を取得するExcelファイルの絶対パス"),
 });
 
 const AddWorksheetSchema = z.object({
@@ -52,39 +57,28 @@ const GetRangeValuesSchema = z.object({
   range: z.string().describe("取得する範囲。A1:C3形式で指定（例: A1:C10, B2:D5）"),
 });
 
-const AddChartSchema = z.object({
-  filePath: z.string().describe("Excelファイルのパス"),
-  sheetName: z.string().describe("ワークシート名"),
-  chartType: z.enum(["line", "bar", "pie", "scatter"]).describe("チャートの種類"),
-  dataRange: z.string().describe("データ範囲（例: A1:B10）"),
-  position: z.object({
-    col: z.number(),
-    row: z.number(),
-  }).describe("チャートの位置"),
-});
-
 const FormatCellSchema = z.object({
   filePath: z.string().describe("Excelファイルのパス"),
   sheetName: z.string().describe("ワークシート名"),
   cell: z.string().describe("セル位置（例: A1）"),
   format: z.object({
     font: z.object({
-      bold: z.boolean().optional(),
-      italic: z.boolean().optional(),
-      size: z.number().optional(),
-      color: z.string().optional(),
-    }).optional(),
+      bold: z.boolean().optional().describe("太字設定"),
+      italic: z.boolean().optional().describe("斜体設定"),
+      size: z.number().optional().describe("フォントサイズ"),
+      color: z.string().optional().describe("フォント色（ARGB形式）"),
+    }).optional().describe("フォント設定"),
     fill: z.object({
-      type: z.literal("pattern"),
-      pattern: z.string(),
-      fgColor: z.string(),
-    }).optional(),
+      type: z.literal("pattern").describe("塗りつぶしタイプ"),
+      pattern: z.string().describe("パターン（solid等）"),
+      fgColor: z.string().describe("前景色（ARGB形式）"),
+    }).optional().describe("塗りつぶし設定"),
     border: z.object({
       top: z.object({ style: z.string(), color: z.string() }).optional(),
       left: z.object({ style: z.string(), color: z.string() }).optional(),
       bottom: z.object({ style: z.string(), color: z.string() }).optional(),
       right: z.object({ style: z.string(), color: z.string() }).optional(),
-    }).optional(),
+    }).optional().describe("罫線設定"),
   }).describe("セルの書式設定"),
 });
 
@@ -94,33 +88,25 @@ const FindDataSchema = z.object({
   searchValue: z.union([z.string(), z.number()]).describe("検索する値"),
 });
 
-const SortDataSchema = z.object({
-  filePath: z.string().describe("Excelファイルのパス"),
-  sheetName: z.string().describe("ワークシート名"),
-  range: z.string().describe("ソート範囲（例: A1:C10）"),
-  sortColumn: z.string().describe("ソート基準列（例: A）"),
-  ascending: z.boolean().default(true).describe("昇順かどうか"),
-});
-
-const FilterDataSchema = z.object({
-  filePath: z.string().describe("Excelファイルのパス"),
-  sheetName: z.string().describe("ワークシート名"),
-  range: z.string().describe("フィルター範囲（例: A1:C10）"),
-  column: z.string().describe("フィルター列（例: A）"),
-  criteria: z.union([z.string(), z.number()]).describe("フィルター条件"),
-});
-
 const AddFormulaSchema = z.object({
   filePath: z.string().describe("Excelファイルのパス"),
   sheetName: z.string().describe("ワークシート名"),
   cell: z.string().describe("セル位置（例: A1）"),
-  formula: z.string().describe("数式（=SUM(A1:A10)など）"),
+  formula: z.string().describe("数式（=SUM(A1:A10)など、=で始まる）"),
 });
 
 const ExportToCSVSchema = z.object({
-  filePath: z.string().describe("Excelファイルのパス"),
-  sheetName: z.string().describe("ワークシート名"),
+  filePath: z.string().describe("Excelファイルのパス（既存ファイル）"),
+  sheetName: z.string().describe("ワークシート名（既存シート）"),
   csvPath: z.string().describe("CSVファイルの出力パス"),
+});
+
+const CloseWorkbookSchema = z.object({
+  filePath: z.string().describe("閉じるExcelファイルの絶対パス。現在開いているファイルのパスを指定してください"),
+});
+
+const ListOpenWorkbooksSchema = z.object({
+  // パラメータなし
 });
 
 // 引数検証ヘルパー関数
@@ -157,6 +143,11 @@ function getSheetNames(workbook: ExcelJS.Workbook): string {
   });
   return sheetNames.join(', ');
 }
+
+// ワークブックキャッシュシステム
+const workbookCache = new Map<string, ExcelJS.Workbook>();
+const openWorkbookPaths = new Set<string>();
+
 const server = new Server(
   {
     name: "excel-mcp-server",
@@ -179,6 +170,65 @@ async function createWorkbook(filePath: string): Promise<string> {
     return `Excelワークブック '${filePath}' を作成しました。`;
   } catch (error) {
     throw new McpError(ErrorCode.InternalError, `ワークブック作成エラー: ${error}`);
+  }
+}
+
+// ワークブック開く（既存ファイル）
+async function openWorkbook(filePath: string): Promise<string> {
+  try {
+    validateFilePath(filePath);
+    
+    // ファイル存在確認
+    try {
+      await fs.access(filePath);
+    } catch {
+      throw new Error(`ファイルが見つかりません: ${filePath}`);
+    }
+    
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+    
+    // キャッシュに保存
+    workbookCache.set(filePath, workbook);
+    openWorkbookPaths.add(filePath);
+    
+    const sheetNames = getSheetNames(workbook);
+    const sheetCount = workbook.worksheets.length;
+    
+    return `Excelワークブック '${filePath}' を開きました。\nワークシート数: ${sheetCount}\nシート名: ${sheetNames}`;
+  } catch (error) {
+    throw new McpError(ErrorCode.InternalError, `ワークブック読み込みエラー: ${error}`);
+  }
+}
+
+// ワークブック情報取得
+async function getWorkbookInfo(filePath: string): Promise<string> {
+  try {
+    validateFilePath(filePath);
+    
+    // ファイル存在確認
+    try {
+      await fs.access(filePath);
+    } catch {
+      throw new Error(`ファイルが見つかりません: ${filePath}`);
+    }
+    
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+    
+    const info = {
+      ファイルパス: filePath,
+      ワークシート数: workbook.worksheets.length,
+      ワークシート名一覧: workbook.worksheets.map(sheet => sheet.name),
+      作成者: workbook.creator || "不明",
+      最終更新者: workbook.lastModifiedBy || "不明",
+      作成日時: workbook.created ? workbook.created.toISOString() : "不明",
+      最終更新日時: workbook.modified ? workbook.modified.toISOString() : "不明"
+    };
+    
+    return `ワークブック情報:\n${JSON.stringify(info, null, 2)}`;
+  } catch (error) {
+    throw new McpError(ErrorCode.InternalError, `ワークブック情報取得エラー: ${error}`);
   }
 }
 
@@ -446,133 +496,195 @@ async function exportToCSV(filePath: string, sheetName: string, csvPath: string)
   }
 }
 
-// ツールリストハンドラー
+// ワークブックを閉じる
+async function closeWorkbook(filePath: string): Promise<string> {
+  try {
+    validateFilePath(filePath);
+    
+    // キャッシュから削除
+    const wasOpen = openWorkbookPaths.has(filePath);
+    if (wasOpen) {
+      workbookCache.delete(filePath);
+      openWorkbookPaths.delete(filePath);
+      return `Excelワークブック '${filePath}' を閉じました。メモリから解放されました。`;
+    } else {
+      return `Excelワークブック '${filePath}' は開かれていませんでした。`;
+    }
+  } catch (error) {
+    throw new McpError(ErrorCode.InternalError, `ワークブック終了エラー: ${error}`);
+  }
+}
+
+// 開いているワークブック一覧
+async function listOpenWorkbooks(): Promise<string> {
+  try {
+    if (openWorkbookPaths.size === 0) {
+      return "現在開いているワークブックはありません。";
+    }
+    
+    const openList = Array.from(openWorkbookPaths);
+    const info = {
+      開いているワークブック数: openList.length,
+      ファイル一覧: openList
+    };
+    
+    return `開いているワークブック:\n${JSON.stringify(info, null, 2)}`;
+  } catch (error) {
+    throw new McpError(ErrorCode.InternalError, `開いているワークブック一覧取得エラー: ${error}`);
+  }
+}
+
+// ツールリストハンドラー（直接定義）
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
         name: "create_workbook",
-        description: "新しいExcelワークブックを作成します。引数: filePath（絶対パス、.xlsx拡張子必須）",
-        inputSchema: CreateWorkbookSchema,
+        description: "新しいExcelワークブックを作成します",
+        inputSchema: zodToJsonSchema(CreateWorkbookSchema)
       },
       {
-        name: "add_worksheet",
-        description: "既存のワークブックにワークシートを追加します。引数: filePath（既存ファイル）, sheetName（ユニークな名前）",
-        inputSchema: AddWorksheetSchema,
+        name: "open_workbook",
+        description: "既存のExcelワークブックを開いて情報を表示します",
+        inputSchema: zodToJsonSchema(OpenWorkbookSchema)
+      },
+      {
+        name: "get_workbook_info",
+        description: "Excelワークブックの詳細情報を取得します（シート一覧、メタデータ等）",
+        inputSchema: zodToJsonSchema(GetWorkbookInfoSchema)
+      },
+      {
+        name: "add_worksheet", 
+        description: "既存のワークブックにワークシートを追加します",
+        inputSchema: zodToJsonSchema(AddWorksheetSchema)
       },
       {
         name: "set_cell_value",
-        description: "指定されたセルに値を設定します。引数: filePath, sheetName（既存シート）, cell（A1形式）, value（文字列/数値/真偽値）",
-        inputSchema: SetCellValueSchema,
+        description: "指定されたセルに値を設定します",
+        inputSchema: zodToJsonSchema(SetCellValueSchema)
       },
       {
         name: "get_cell_value",
-        description: "指定されたセルの値を取得します。引数: filePath, sheetName（既存シート）, cell（A1形式）",
-        inputSchema: GetCellValueSchema,
+        description: "指定されたセルの値を取得します", 
+        inputSchema: zodToJsonSchema(GetCellValueSchema)
       },
       {
         name: "set_range_values",
-        description: "指定された範囲に2次元配列のデータを設定します。引数: filePath, sheetName, startCell（A1形式）, values（2次元配列）",
-        inputSchema: SetRangeValuesSchema,
+        description: "指定された範囲に2次元配列のデータを設定します",
+        inputSchema: zodToJsonSchema(SetRangeValuesSchema)
       },
       {
         name: "get_range_values",
-        description: "指定された範囲のデータを取得します。引数: filePath, sheetName, range（A1:C3形式）",
-        inputSchema: GetRangeValuesSchema,
+        description: "指定された範囲のデータを取得します",
+        inputSchema: zodToJsonSchema(GetRangeValuesSchema)
       },
       {
         name: "format_cell",
-        description: "セルの書式（フォント、塗りつぶし、罫線）を設定します。引数: filePath, sheetName, cell（A1形式）, format（書式オブジェクト）",
-        inputSchema: FormatCellSchema,
+        description: "セルの書式（フォント、塗りつぶし、罫線）を設定します",
+        inputSchema: zodToJsonSchema(FormatCellSchema)
       },
       {
         name: "add_formula",
-        description: "セルに数式を追加します。引数: filePath, sheetName, cell（A1形式）, formula（=で始まる数式）",
-        inputSchema: AddFormulaSchema,
+        description: "セルに数式を追加します",
+        inputSchema: zodToJsonSchema(AddFormulaSchema)
       },
       {
         name: "find_data",
-        description: "ワークシート内で指定された値を検索します。引数: filePath, sheetName, searchValue（検索する値）",
-        inputSchema: FindDataSchema,
+        description: "ワークシート内で指定された値を検索します",
+        inputSchema: zodToJsonSchema(FindDataSchema)
       },
       {
         name: "export_to_csv",
-        description: "ワークシートをCSVファイルにエクスポートします。引数: filePath（既存ファイル）, sheetName（既存シート）, csvPath（出力先）",
-        inputSchema: ExportToCSVSchema,
+        description: "ワークシートをCSVファイルにエクスポートします",
+        inputSchema: zodToJsonSchema(ExportToCSVSchema)
       },
-    ],
+      {
+        name: "close_workbook",
+        description: "開いているExcelワークブックを閉じてメモリから解放します",
+        inputSchema: zodToJsonSchema(CloseWorkbookSchema)
+      },
+      {
+        name: "list_open_workbooks",
+        description: "現在開いているExcelワークブックの一覧を表示します",
+        inputSchema: zodToJsonSchema(ListOpenWorkbooksSchema)
+      }
+    ]
   };
 });
 
-// ツール呼び出しハンドラー
+// ツール実装関数のマップ
+const toolImplementations: { [key: string]: (...args: any[]) => Promise<string> } = {
+  create_workbook: async (args: any) => {
+    const { filePath } = CreateWorkbookSchema.parse(args);
+    return await createWorkbook(filePath);
+  },
+  open_workbook: async (args: any) => {
+    const { filePath } = OpenWorkbookSchema.parse(args);
+    return await openWorkbook(filePath);
+  },
+  get_workbook_info: async (args: any) => {
+    const { filePath } = GetWorkbookInfoSchema.parse(args);
+    return await getWorkbookInfo(filePath);
+  },
+  add_worksheet: async (args: any) => {
+    const { filePath, sheetName } = AddWorksheetSchema.parse(args);
+    return await addWorksheet(filePath, sheetName);
+  },
+  set_cell_value: async (args: any) => {
+    const { filePath, sheetName, cell, value } = SetCellValueSchema.parse(args);
+    return await setCellValue(filePath, sheetName, cell, value);
+  },
+  get_cell_value: async (args: any) => {
+    const { filePath, sheetName, cell } = GetCellValueSchema.parse(args);
+    return await getCellValue(filePath, sheetName, cell);
+  },
+  set_range_values: async (args: any) => {
+    const { filePath, sheetName, startCell, values } = SetRangeValuesSchema.parse(args);
+    return await setRangeValues(filePath, sheetName, startCell, values);
+  },
+  get_range_values: async (args: any) => {
+    const { filePath, sheetName, range } = GetRangeValuesSchema.parse(args);
+    return await getRangeValues(filePath, sheetName, range);
+  },
+  format_cell: async (args: any) => {
+    const { filePath, sheetName, cell, format } = FormatCellSchema.parse(args);
+    return await formatCell(filePath, sheetName, cell, format);
+  },
+  add_formula: async (args: any) => {
+    const { filePath, sheetName, cell, formula } = AddFormulaSchema.parse(args);
+    return await addFormula(filePath, sheetName, cell, formula);
+  },
+  find_data: async (args: any) => {
+    const { filePath, sheetName, searchValue } = FindDataSchema.parse(args);
+    return await findData(filePath, sheetName, searchValue);
+  },
+  export_to_csv: async (args: any) => {
+    const { filePath, sheetName, csvPath } = ExportToCSVSchema.parse(args);
+    return await exportToCSV(filePath, sheetName, csvPath);
+  },
+  close_workbook: async (args: any) => {
+    const { filePath } = CloseWorkbookSchema.parse(args);
+    return await closeWorkbook(filePath);
+  },
+  list_open_workbooks: async (args: any) => {
+    ListOpenWorkbooksSchema.parse(args); // パラメータ検証（空オブジェクト）
+    return await listOpenWorkbooks();
+  }
+};
+
+// ツール呼び出しハンドラー（自動化）
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   try {
-    switch (name) {
-      case "create_workbook": {
-        const { filePath } = CreateWorkbookSchema.parse(args);
-        const result = await createWorkbook(filePath);
-        return { content: [{ type: "text", text: result }] };
-      }
-
-      case "add_worksheet": {
-        const { filePath, sheetName } = AddWorksheetSchema.parse(args);
-        const result = await addWorksheet(filePath, sheetName);
-        return { content: [{ type: "text", text: result }] };
-      }
-
-      case "set_cell_value": {
-        const { filePath, sheetName, cell, value } = SetCellValueSchema.parse(args);
-        const result = await setCellValue(filePath, sheetName, cell, value);
-        return { content: [{ type: "text", text: result }] };
-      }
-
-      case "get_cell_value": {
-        const { filePath, sheetName, cell } = GetCellValueSchema.parse(args);
-        const result = await getCellValue(filePath, sheetName, cell);
-        return { content: [{ type: "text", text: result }] };
-      }
-
-      case "set_range_values": {
-        const { filePath, sheetName, startCell, values } = SetRangeValuesSchema.parse(args);
-        const result = await setRangeValues(filePath, sheetName, startCell, values);
-        return { content: [{ type: "text", text: result }] };
-      }
-
-      case "get_range_values": {
-        const { filePath, sheetName, range } = GetRangeValuesSchema.parse(args);
-        const result = await getRangeValues(filePath, sheetName, range);
-        return { content: [{ type: "text", text: result }] };
-      }
-
-      case "format_cell": {
-        const { filePath, sheetName, cell, format } = FormatCellSchema.parse(args);
-        const result = await formatCell(filePath, sheetName, cell, format);
-        return { content: [{ type: "text", text: result }] };
-      }
-
-      case "add_formula": {
-        const { filePath, sheetName, cell, formula } = AddFormulaSchema.parse(args);
-        const result = await addFormula(filePath, sheetName, cell, formula);
-        return { content: [{ type: "text", text: result }] };
-      }
-
-      case "find_data": {
-        const { filePath, sheetName, searchValue } = FindDataSchema.parse(args);
-        const result = await findData(filePath, sheetName, searchValue);
-        return { content: [{ type: "text", text: result }] };
-      }
-
-      case "export_to_csv": {
-        const { filePath, sheetName, csvPath } = ExportToCSVSchema.parse(args);
-        const result = await exportToCSV(filePath, sheetName, csvPath);
-        return { content: [{ type: "text", text: result }] };
-      }
-
-      default:
-        throw new McpError(ErrorCode.MethodNotFound, `未知のツール: ${name}`);
+    const implementation = toolImplementations[name];
+    if (!implementation) {
+      throw new McpError(ErrorCode.MethodNotFound, `未知のツール: ${name}`);
     }
+
+    const result = await implementation(args);
+    return { content: [{ type: "text", text: result }] };
+    
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errorMessages = error.errors.map(e => {
