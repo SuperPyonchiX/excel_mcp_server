@@ -717,7 +717,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function runServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Excel MCP Server が開始されました");
+  
+  // 正常な起動メッセージは標準出力に出力
+  console.log("Excel MCP Server が開始されました");
 }
 
 runServer().catch(console.error);

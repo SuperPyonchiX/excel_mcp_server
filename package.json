@@ -8,7 +8,16 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsc && node dist/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "server:start": "node scripts/server-manager.js --start",
+    "server:stop": "node scripts/server-manager.js --stop",
+    "server:status": "node scripts/server-manager.js --status",
+    "server:list": "node scripts/server-manager.js --list",
+    "server:kill": "node scripts/server-manager.js --kill",
+    "test": "npm run test:basic && npm run test:integration && npm run test:tools",
+    "test:basic": "node test/mcp-basic-test.js",
+    "test:integration": "node test/excel-integration-test.js",
+    "test:tools": "node test/tool-individual-test.js",
+    "test:all": "npm run build && npm test"
   },
   "keywords": [
     "mcp",
