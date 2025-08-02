@@ -2,6 +2,10 @@
 
 AIエージェントがExcelを自由に操作できるModel Context Protocol (MCP) サーバーです。
 
+<a href="https://glama.ai/mcp/servers/@SuperPyonchiX/excel_mcp_server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@SuperPyonchiX/excel_mcp_server/badge" alt="Excel Server MCP server" />
+</a>
+
 ## 📚 詳細ガイド
 
 **初心者の方は `guide/` ディレクトリの詳細ガイドを参照してください：**
