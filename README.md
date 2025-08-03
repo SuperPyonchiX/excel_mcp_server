@@ -20,6 +20,7 @@ AIエージェントがExcelを自由に操作できるModel Context Protocol (M
 
 ### ワークブック・ワークシート操作
 - `create_workbook` - 新しいExcelワークブックを作成
+- `get_workbook_info` - ワークブックの詳細情報を取得
 - `add_worksheet` - ワークシートを追加
 
 ### セル・範囲操作
