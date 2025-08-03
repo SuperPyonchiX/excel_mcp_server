@@ -206,10 +206,6 @@ class MCPToolTester {
             csvPath: csvFile
         }, 'CSV出力テスト');
 
-        // 12. 開いているワークブック一覧テスト
-        await this.executeTool('list_open_workbooks', {}, 
-        '開いているワークブック一覧テスト');
-
         // テスト終了処理
         await this.delay(1500);
         await this.printTestSummary();

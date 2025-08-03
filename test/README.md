@@ -32,7 +32,7 @@ node test/excel-integration-test.js
 ### 3. `tool-individual-test.js`
 - **目的**: 各ツールの個別機能テスト
 - **テスト内容**:
-  - 全14ツールの個別テスト
+  - 全11ツールの個別テスト
   - エラーハンドリング確認
   - 詳細な結果レポート
 

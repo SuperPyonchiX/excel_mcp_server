@@ -18,10 +18,6 @@ const CreateWorkbookSchema = z.object({
   filePath: z.string().describe("作成するExcelファイルの絶対パス（例: C:/Users/Username/Documents/report.xlsx）。ファイル拡張子は.xlsxである必要があります"),
 });
 
-const OpenWorkbookSchema = z.object({
-  filePath: z.string().describe("開くExcelファイルの絶対パス。既存のファイルである必要があります"),
-});
-
 const GetWorkbookInfoSchema = z.object({
   filePath: z.string().describe("情報を取得するExcelファイルの絶対パス"),
 });
@@ -101,14 +97,6 @@ const ExportToCSVSchema = z.object({
   csvPath: z.string().describe("CSVファイルの出力パス"),
 });
 
-const CloseWorkbookSchema = z.object({
-  filePath: z.string().describe("閉じるExcelファイルの絶対パス。現在開いているファイルのパスを指定してください"),
-});
-
-const ListOpenWorkbooksSchema = z.object({
-  // パラメータなし
-});
-
 // 引数検証ヘルパー関数
 function validateFilePath(filePath: string): void {
   if (!filePath) {
@@ -144,10 +132,6 @@ function getSheetNames(workbook: ExcelJS.Workbook): string {
   return sheetNames.join(', ');
 }
 
-// ワークブックキャッシュシステム
-const workbookCache = new Map<string, ExcelJS.Workbook>();
-const openWorkbookPaths = new Set<string>();
-
 const server = new Server(
   {
     name: "excel-mcp-server",
@@ -167,37 +151,10 @@ async function createWorkbook(filePath: string): Promise<string> {
     
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.writeFile(filePath);
+    
     return `Excelワークブック '${filePath}' を作成しました。`;
   } catch (error) {
     throw new McpError(ErrorCode.InternalError, `ワークブック作成エラー: ${error}`);
-  }
-}
-
-// ワークブック開く（既存ファイル）
-async function openWorkbook(filePath: string): Promise<string> {
-  try {
-    validateFilePath(filePath);
-    
-    // ファイル存在確認
-    try {
-      await fs.access(filePath);
-    } catch {
-      throw new Error(`ファイルが見つかりません: ${filePath}`);
-    }
-    
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.readFile(filePath);
-    
-    // キャッシュに保存
-    workbookCache.set(filePath, workbook);
-    openWorkbookPaths.add(filePath);
-    
-    const sheetNames = getSheetNames(workbook);
-    const sheetCount = workbook.worksheets.length;
-    
-    return `Excelワークブック '${filePath}' を開きました。\nワークシート数: ${sheetCount}\nシート名: ${sheetNames}`;
-  } catch (error) {
-    throw new McpError(ErrorCode.InternalError, `ワークブック読み込みエラー: ${error}`);
   }
 }
 
@@ -262,6 +219,7 @@ async function addWorksheet(filePath: string, sheetName: string): Promise<string
     
     workbook.addWorksheet(sheetName);
     await workbook.xlsx.writeFile(filePath);
+    
     return `ワークシート '${sheetName}' を追加しました。`;
   } catch (error) {
     throw new McpError(ErrorCode.InternalError, `ワークシート追加エラー: ${error}`);
@@ -280,6 +238,7 @@ async function setCellValue(filePath: string, sheetName: string, cell: string, v
     }
     worksheet.getCell(cell).value = value;
     await workbook.xlsx.writeFile(filePath);
+    
     return `セル ${cell} に値 '${value}' を設定しました。`;
   } catch (error) {
     throw new McpError(ErrorCode.InternalError, `セル値設定エラー: ${error}`);
@@ -336,6 +295,7 @@ async function setRangeValues(filePath: string, sheetName: string, startCell: st
     }
     
     await workbook.xlsx.writeFile(filePath);
+    
     return `範囲 ${startCell} から ${values.length}行 x ${values[0].length}列 のデータを設定しました。`;
   } catch (error) {
     throw new McpError(ErrorCode.InternalError, `範囲値設定エラー: ${error}`);
@@ -432,6 +392,7 @@ async function formatCell(filePath: string, sheetName: string, cell: string, for
     }
     
     await workbook.xlsx.writeFile(filePath);
+    
     return `セル ${cell} の書式を設定しました。`;
   } catch (error) {
     throw new McpError(ErrorCode.InternalError, `セル書式設定エラー: ${error}`);
@@ -449,6 +410,7 @@ async function addFormula(filePath: string, sheetName: string, cell: string, for
     
     worksheet.getCell(cell).value = { formula: formula };
     await workbook.xlsx.writeFile(filePath);
+    
     return `セル ${cell} に数式 '${formula}' を設定しました。`;
   } catch (error) {
     throw new McpError(ErrorCode.InternalError, `数式追加エラー: ${error}`);
@@ -496,44 +458,6 @@ async function exportToCSV(filePath: string, sheetName: string, csvPath: string)
   }
 }
 
-// ワークブックを閉じる
-async function closeWorkbook(filePath: string): Promise<string> {
-  try {
-    validateFilePath(filePath);
-    
-    // キャッシュから削除
-    const wasOpen = openWorkbookPaths.has(filePath);
-    if (wasOpen) {
-      workbookCache.delete(filePath);
-      openWorkbookPaths.delete(filePath);
-      return `Excelワークブック '${filePath}' を閉じました。メモリから解放されました。`;
-    } else {
-      return `Excelワークブック '${filePath}' は開かれていませんでした。`;
-    }
-  } catch (error) {
-    throw new McpError(ErrorCode.InternalError, `ワークブック終了エラー: ${error}`);
-  }
-}
-
-// 開いているワークブック一覧
-async function listOpenWorkbooks(): Promise<string> {
-  try {
-    if (openWorkbookPaths.size === 0) {
-      return "現在開いているワークブックはありません。";
-    }
-    
-    const openList = Array.from(openWorkbookPaths);
-    const info = {
-      開いているワークブック数: openList.length,
-      ファイル一覧: openList
-    };
-    
-    return `開いているワークブック:\n${JSON.stringify(info, null, 2)}`;
-  } catch (error) {
-    throw new McpError(ErrorCode.InternalError, `開いているワークブック一覧取得エラー: ${error}`);
-  }
-}
-
 // ツールリストハンドラー（直接定義）
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
@@ -542,11 +466,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         name: "create_workbook",
         description: "新しいExcelワークブックを作成します",
         inputSchema: zodToJsonSchema(CreateWorkbookSchema)
-      },
-      {
-        name: "open_workbook",
-        description: "既存のExcelワークブックを開いて情報を表示します",
-        inputSchema: zodToJsonSchema(OpenWorkbookSchema)
       },
       {
         name: "get_workbook_info",
@@ -597,16 +516,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         name: "export_to_csv",
         description: "ワークシートをCSVファイルにエクスポートします",
         inputSchema: zodToJsonSchema(ExportToCSVSchema)
-      },
-      {
-        name: "close_workbook",
-        description: "開いているExcelワークブックを閉じてメモリから解放します",
-        inputSchema: zodToJsonSchema(CloseWorkbookSchema)
-      },
-      {
-        name: "list_open_workbooks",
-        description: "現在開いているExcelワークブックの一覧を表示します",
-        inputSchema: zodToJsonSchema(ListOpenWorkbooksSchema)
       }
     ]
   };
@@ -617,10 +526,6 @@ const toolImplementations: { [key: string]: (...args: any[]) => Promise<string> 
   create_workbook: async (args: any) => {
     const { filePath } = CreateWorkbookSchema.parse(args);
     return await createWorkbook(filePath);
-  },
-  open_workbook: async (args: any) => {
-    const { filePath } = OpenWorkbookSchema.parse(args);
-    return await openWorkbook(filePath);
   },
   get_workbook_info: async (args: any) => {
     const { filePath } = GetWorkbookInfoSchema.parse(args);
@@ -661,14 +566,6 @@ const toolImplementations: { [key: string]: (...args: any[]) => Promise<string> 
   export_to_csv: async (args: any) => {
     const { filePath, sheetName, csvPath } = ExportToCSVSchema.parse(args);
     return await exportToCSV(filePath, sheetName, csvPath);
-  },
-  close_workbook: async (args: any) => {
-    const { filePath } = CloseWorkbookSchema.parse(args);
-    return await closeWorkbook(filePath);
-  },
-  list_open_workbooks: async (args: any) => {
-    ListOpenWorkbooksSchema.parse(args); // パラメータ検証（空オブジェクト）
-    return await listOpenWorkbooks();
   }
 };
 
