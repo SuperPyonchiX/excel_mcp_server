@@ -15,7 +15,7 @@ import path from "path";
 
 // MCP適切なスキーマ定義（Zodスキーマ）
 const CreateWorkbookSchema = z.object({
-  filePath: z.string().describe("作成するExcelファイルの絶対パス（例: C:/Users/Username/Documents/report.xlsx）。ファイル拡張子は.xlsxである必要があります"),
+  filePath: z.string().describe("作成するExcelファイルの絶対パス。例: C:/Users/Username/Documents/report.xlsx。ファイル拡張子は.xlsxである必要があります。注意: 作成されるワークブックは空でシートを含みません"),
 });
 
 const GetWorkbookInfoSchema = z.object({
@@ -149,10 +149,11 @@ async function createWorkbook(filePath: string): Promise<string> {
   try {
     validateFilePath(filePath);
     
+    // 空のワークブックを作成（シートは含まれない）
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.writeFile(filePath);
     
-    return `Excelワークブック '${filePath}' を作成しました。`;
+    return `Excelワークブック '${filePath}' を作成しました。注意: このワークブックはシートを含んでいません。データを操作する前に、add_worksheetツールを使用してワークシートを追加してください。`;
   } catch (error) {
     throw new McpError(ErrorCode.InternalError, `ワークブック作成エラー: ${error}`);
   }
@@ -464,7 +465,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "create_workbook",
-        description: "新しいExcelワークブックを作成します",
+        description: "新しいExcelワークブックを作成します。注意: 作成されるワークブックは空でシートを含みません。データを操作する前にadd_worksheetツールでワークシートを追加する必要があります。",
         inputSchema: zodToJsonSchema(CreateWorkbookSchema)
       },
       {
