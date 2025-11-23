@@ -1,6 +1,19 @@
 # Excel MCP Server
 
-AIエージェントがExcelを自由に操作できるModel Context Protocol (MCP) サーバーです。
+AIエージェント（Claude、ChatGPT、Copilotなど）がExcelファイルを自動操作できるModel Context Protocol (MCP) サーバーです。
+
+## 🎯 できること
+
+このMCPサーバーを使うと、AIエージェントに自然言語で指示するだけで、以下のようなExcel操作が自動化できます：
+
+- 📊 **データ入力・編集**: セルや範囲に値を設定、取得
+- 📝 **ワークブック管理**: 新規作成、シート追加、情報取得
+- 🎨 **書式設定**: フォント、色、罫線などの装飾
+- 🔢 **数式・計算**: セルに数式を追加して自動計算
+- 🔍 **データ検索**: ワークシート内のデータを検索
+- 💾 **データ出力**: ExcelシートをCSVファイルにエクスポート
+
+**例**: 「売上データを分析して、月別の合計を計算し、グラフ用のシートを作成して」と指示すれば、AIが自動的にExcelファイルを操作します。
 
 ## 📚 詳細ガイド
 
@@ -8,120 +21,143 @@ AIエージェントがExcelを自由に操作できるModel Context Protocol (M
 
 - 📖 **[メインガイド](./guide/README.md)** - プロジェクト全体の概要
 - 🎓 **[MCP基礎知識](./guide/01-basics.md)** - MCPとは何か、仕組みの理解
-- ⚙️ **[セットアップ手順](./guide/02-setup.md)** - 開発環境の構築方法
+- ⚙️ **[セットアップ手順](./guide/02-setup.md)** - 環境構築方法
 - 🚀 **[使用方法](./guide/03-usage.md)** - 実際の使い方と例
-- 🔧 **[ツール詳細](./guide/04-tools.md)** - 各Excel操作ツールの詳細説明
+- 🔧 **[ツール詳細](./guide/04-tools.md)** - 各Excel操作ツールの詳細
 - 🛠️ **[トラブルシューティング](./guide/05-troubleshooting.md)** - よくある問題と解決方法
 - 📋 **[サンプル集](./guide/06-samples.md)** - 実用的な使用例集
 
-## 機能
+## 🚀 セットアップ手順
 
-このMCPサーバーは以下のExcel操作機能を提供します：
+### 1. 必要な環境
+
+- Node.js (v16以降)
+- Windows、macOS、またはLinux
+
+### 2. インストール
+
+```bash
+# ディレクトリ移動
+cd excel_mcp_server
+
+# 依存関係をインストール
+npm install
+
+# ビルド
+npm run build
+```
+
+### 3. VS Code Copilotとの連携設定
+
+VS CodeでCopilotと連携する場合、`mcp.json`ファイルに設定を追加します。
+
+**設定ファイルの場所**: 
+- **Windows**: `%APPDATA%\Code\User\mcp.json` (安定版) または `%APPDATA%\Code - Insiders\User\mcp.json` (Insiders版)
+- **macOS**: `~/Library/Application Support/Code/User/mcp.json` または `~/Library/Application Support/Code - Insiders/User/mcp.json`
+- **Linux**: `~/.config/Code/User/mcp.json` または `~/.config/Code - Insiders/User/mcp.json`
+
+**設定内容**:
+```json
+{
+  "servers": {
+    "excel-mcp-server": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["C:/path/to/excel_mcp_server/dist/index.js"]
+    }
+  }
+}
+```
+
+**重要**: `C:/path/to/excel_mcp_server/dist/index.js` は、実際のプロジェクトの `dist/index.js` への絶対パスに置き換えてください。
+
+### 4. 動作確認
+
+VS Codeを再起動後、Copilotに以下のように話しかけてみてください：
+
+```
+「ExcelファイルC:/test/sample.xlsxを作成して、Sheet1を追加し、A1セルに"Hello Excel"と入力してください」
+```
+
+## 💡 使用例
+
+### 基本的な操作
+
+1. **新しいExcelファイルを作成**
+   ```
+   「C:/reports/monthly.xlsxという新しいExcelファイルを作成して」
+   ```
+
+2. **データを入力**
+   ```
+   「Sheet1のA1からC3の範囲に、商品名、価格、在庫数の表を作成して」
+   ```
+
+3. **書式を設定**
+   ```
+   「A1セルを太字にして、背景色を黄色にして」
+   ```
+
+4. **数式で計算**
+   ```
+   「D列に合計を計算する数式を追加して」
+   ```
+
+### より高度な使い方
+
+詳細な使用例は [サンプル集](./guide/06-samples.md) を参照してください。
+
+## 🔧 提供される機能
+
+このMCPサーバーは以下のExcel操作ツールを提供します：
 
 ### ワークブック・ワークシート操作
 - `create_workbook` - 新しいExcelワークブックを作成
-- `get_workbook_info` - ワークブックの詳細情報を取得
-- `add_worksheet` - ワークシートを追加
+- `get_workbook_info` - ワークブックの詳細情報を取得（シート一覧など）
+- `add_worksheet` - 既存のワークブックにワークシートを追加
 
 ### セル・範囲操作
-- `set_cell_value` - セルに値を設定
-- `get_cell_value` - セルの値を取得
-- `set_range_values` - 範囲に2次元配列データを設定
-- `get_range_values` - 範囲のデータを取得
+- `set_cell_value` - 単一のセルに値を設定
+- `get_cell_value` - 単一のセルの値を取得
+- `set_range_values` - 複数セルに一括でデータを設定（表形式データに便利）
+- `get_range_values` - 複数セルのデータを一括取得
 
 ### 書式設定
-- `format_cell` - セルの書式（フォント、塗りつぶし、罫線）を設定
+- `format_cell` - セルの書式を設定（フォント、背景色、罫線など）
 
 ### 数式・計算
-- `add_formula` - セルに数式を追加
+- `add_formula` - セルに数式を追加（SUM、AVERAGEなど）
 
 ### データ操作
-- `find_data` - ワークシート内でデータを検索
+- `find_data` - ワークシート内で特定のデータを検索
 
 ### 出力
 - `export_to_csv` - ワークシートをCSVファイルにエクスポート
 
-## セットアップ
+詳細は [ツール詳細ガイド](./guide/04-tools.md) を参照してください。
 
-1. 依存関係をインストール：
-```bash
-npm install
-```
+## 🛠️ トラブルシューティング
 
-2. TypeScriptをコンパイル：
-```bash
-npm run build
-```
+問題が発生した場合は、[トラブルシューティングガイド](./guide/05-troubleshooting.md) を確認してください。
 
-3. サーバーを起動：
-```bash
-npm start
-```
+## 📄 ライセンス
 
-## 開発
+ISC
 
-開発モード（コンパイル後に実行）：
+---
+
+## 開発者向け情報
+
+### 開発環境のセットアップ
+
+開発モードで実行：
 ```bash
 npm run dev
 ```
 
-## 使用例
+### プロジェクト構造
 
-MCPクライアントから以下のようにツールを呼び出せます：
-
-```javascript
-// 新しいワークブックを作成
-await callTool("create_workbook", {
-  filePath: "C:/path/to/workbook.xlsx"
-});
-
-// ワークシートを追加
-await callTool("add_worksheet", {
-  filePath: "C:/path/to/workbook.xlsx",
-  sheetName: "Sheet1"
-});
-
-// セルに値を設定
-await callTool("set_cell_value", {
-  filePath: "C:/path/to/workbook.xlsx",
-  sheetName: "Sheet1",
-  cell: "A1",
-  value: "Hello, Excel!"
-});
-
-// 範囲にデータを設定
-await callTool("set_range_values", {
-  filePath: "C:/path/to/workbook.xlsx",
-  sheetName: "Sheet1",
-  startCell: "A1",
-  values: [
-    ["名前", "年齢", "職業"],
-    ["田中", 30, "エンジニア"],
-    ["佐藤", 25, "デザイナー"]
-  ]
-});
-
-// セルの書式を設定
-await callTool("format_cell", {
-  filePath: "C:/path/to/workbook.xlsx",
-  sheetName: "Sheet1",
-  cell: "A1",
-  format: {
-    font: {
-      bold: true,
-      size: 14,
-      color: "FF0000FF"
-    },
-    fill: {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: "FFFF00"
-    }
-  }
-});
-```
-
-## 技術仕様
+### プロジェクト構造
 
 - **言語**: TypeScript
 - **ランタイム**: Node.js
@@ -129,10 +165,6 @@ await callTool("format_cell", {
 - **Excel ライブラリ**: ExcelJS
 - **スキーマ検証**: Zod
 
-## VS Code での デバッグ
+### デバッグ
 
-このプロジェクトはVS Codeでデバッグできるように設定されています。`.vscode/mcp.json`ファイルにMCPサーバーの設定が含まれています。
-
-## ライセンス
-
-ISC
+VS Codeでのデバッグ設定は `.vscode/mcp.json` に含まれています。
