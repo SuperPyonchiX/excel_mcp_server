@@ -1,132 +1,132 @@
-# CLAUDE.md - AI Assistant Guide for Excel MCP Server
+# CLAUDE.md - Excel MCP Server AIアシスタントガイド
 
-## Project Overview
+## プロジェクト概要
 
-This is a **Model Context Protocol (MCP) server** for Excel automation. It enables AI agents (Claude, ChatGPT, Copilot, etc.) to programmatically interact with Excel files through a standardized protocol.
+Excel自動操作用の**Model Context Protocol (MCP) サーバー**です。AIエージェント（Claude、ChatGPT、Copilotなど）が標準化されたプロトコルを通じてExcelファイルをプログラムで操作できるようにします。
 
-- **Language**: TypeScript
-- **Runtime**: Node.js (v16+)
+- **言語**: TypeScript
+- **ランタイム**: Node.js (v16以降)
 - **MCP SDK**: @modelcontextprotocol/sdk
-- **Excel Library**: ExcelJS
-- **Schema Validation**: Zod
-- **Supported Formats**: .xlsx, .xls
+- **Excelライブラリ**: ExcelJS
+- **スキーマ検証**: Zod
+- **対応形式**: .xlsx, .xls
 
-## Repository Structure
+## リポジトリ構成
 
 ```
 excel_mcp_server/
 ├── src/
-│   └── index.ts              # Main MCP server (all 11 tools implemented here)
-├── dist/                      # Compiled JavaScript output
+│   └── index.ts              # MCPサーバー本体（全11ツール実装）
+├── dist/                      # コンパイル済みJavaScript出力
 ├── test/
-│   ├── mcp-basic-test.js     # Basic MCP functionality tests
-│   ├── excel-integration-test.js  # Excel operations integration tests
-│   ├── tool-individual-test.js    # Individual tool tests
-│   └── output/               # Test output files (gitignored)
-├── guide/                     # User documentation (Japanese)
-│   ├── 01-basics.md          # MCP fundamentals
-│   ├── 02-setup.md           # Setup instructions
-│   ├── 03-usage.md           # Usage guide
-│   ├── 04-tools.md           # Tool reference
-│   ├── 05-troubleshooting.md # Troubleshooting
-│   ├── 06-samples.md         # Usage examples
-│   └── 07-api-specification.md  # API specifications
+│   ├── mcp-basic-test.js     # MCP基本機能テスト
+│   ├── excel-integration-test.js  # Excel操作統合テスト
+│   ├── tool-individual-test.js    # 個別ツールテスト
+│   └── output/               # テスト出力ファイル（gitignore対象）
+├── guide/                     # ユーザー向けドキュメント
+│   ├── 01-basics.md          # MCP基礎知識
+│   ├── 02-setup.md           # セットアップ手順
+│   ├── 03-usage.md           # 使用方法
+│   ├── 04-tools.md           # ツール詳細
+│   ├── 05-troubleshooting.md # トラブルシューティング
+│   ├── 06-samples.md         # 使用例集
+│   └── 07-api-specification.md  # API仕様書
 ├── scripts/
-│   └── server-manager.js     # Server start/stop/status utility
+│   └── server-manager.js     # サーバー起動・停止・状態確認ユーティリティ
 ├── docs/
-│   └── server-management.md  # Server management documentation
+│   └── server-management.md  # サーバー管理ドキュメント
 ├── .github/
-│   └── copilot-instructions.md  # GitHub Copilot instructions
+│   └── copilot-instructions.md  # GitHub Copilot用指示書
 ├── package.json
 └── tsconfig.json
 ```
 
-## Quick Commands
+## よく使うコマンド
 
 ```bash
-# Install dependencies
+# 依存関係インストール
 npm install
 
-# Build TypeScript
+# TypeScriptビルド
 npm run build
 
-# Run all tests (builds first)
+# 全テスト実行（ビルド込み）
 npm run test:all
 
-# Run individual test suites
-npm run test:basic        # MCP basic functionality
-npm run test:integration  # Excel operations
-npm run test:tools        # Individual tool tests
+# 個別テスト実行
+npm run test:basic        # MCP基本機能
+npm run test:integration  # Excel操作統合
+npm run test:tools        # 個別ツール
 
-# Server management
-npm run server:start      # Start MCP server
-npm run server:stop       # Stop server
-npm run server:status     # Check server status
-npm run server:list       # List running processes
-npm run server:kill       # Force kill (dangerous)
+# サーバー管理
+npm run server:start      # MCPサーバー起動
+npm run server:stop       # サーバー停止
+npm run server:status     # 状態確認
+npm run server:list       # 実行中プロセス一覧
+npm run server:kill       # 強制終了（危険）
 
-# Development
-npm run dev               # Build and start server
+# 開発用
+npm run dev               # ビルドしてサーバー起動
 ```
 
-## MCP Tools Provided (11 Total)
+## 提供MCPツール（全11個）
 
-### Workbook/Worksheet Management
-- `create_workbook` - Creates empty workbook (**no sheets included**)
-- `get_workbook_info` - Gets workbook metadata and sheet list
-- `add_worksheet` - Adds worksheet to existing workbook
+### ワークブック・ワークシート管理
+- `create_workbook` - 空のワークブック作成（**シートは含まれない**）
+- `get_workbook_info` - ワークブックのメタデータとシート一覧を取得
+- `add_worksheet` - 既存ワークブックにワークシートを追加
 
-### Cell Operations
-- `set_cell_value` - Sets value in single cell
-- `get_cell_value` - Gets value from single cell
-- `set_range_values` - Sets 2D array of values starting from cell
-- `get_range_values` - Gets values from cell range
+### セル操作
+- `set_cell_value` - 単一セルに値を設定
+- `get_cell_value` - 単一セルの値を取得
+- `set_range_values` - 指定セルから2次元配列データを設定
+- `get_range_values` - セル範囲の値を取得
 
-### Formatting & Formulas
-- `format_cell` - Sets cell formatting (font, fill, border)
-- `add_formula` - Adds Excel formula to cell
+### 書式・数式
+- `format_cell` - セル書式設定（フォント、塗りつぶし、罫線）
+- `add_formula` - セルにExcel数式を追加
 
-### Data Operations
-- `find_data` - Searches for value in worksheet
-- `export_to_csv` - Exports worksheet to CSV file
+### データ操作
+- `find_data` - ワークシート内で値を検索
+- `export_to_csv` - ワークシートをCSVファイルにエクスポート
 
-## Key Development Patterns
+## 主要な開発パターン
 
-### Adding a New Tool
+### 新規ツールの追加方法
 
-1. **Define Zod schema** at top of `src/index.ts`:
+1. **Zodスキーマを定義**（`src/index.ts` 上部）:
 ```typescript
 const NewToolSchema = z.object({
-  filePath: z.string().describe("Absolute path to Excel file"),
-  sheetName: z.string().describe("Worksheet name"),
-  // additional parameters...
+  filePath: z.string().describe("対象Excelファイルの絶対パス"),
+  sheetName: z.string().describe("ワークシート名"),
+  // 追加パラメータ...
 });
 ```
 
-2. **Implement the function**:
+2. **関数を実装**:
 ```typescript
 async function newTool(filePath: string, sheetName: string): Promise<string> {
   const workbook = await loadWorkbook(filePath);
   const worksheet = workbook.getWorksheet(sheetName);
   if (!worksheet) {
-    throw new Error(`Worksheet '${sheetName}' not found. Available: ${getSheetNames(workbook)}`);
+    throw new Error(`ワークシート '${sheetName}' が見つかりません。利用可能: ${getSheetNames(workbook)}`);
   }
-  // implementation...
+  // 実装...
   await workbook.xlsx.writeFile(filePath);
-  return "Success message";
+  return "成功メッセージ";
 }
 ```
 
-3. **Register in ListToolsRequestSchema handler**:
+3. **ListToolsRequestSchemaハンドラーに登録**:
 ```typescript
 {
   name: "new_tool",
-  description: "Tool description",
+  description: "ツールの説明",
   inputSchema: zodToJsonSchema(NewToolSchema)
 }
 ```
 
-4. **Add to toolImplementations map**:
+4. **toolImplementationsマップに追加**:
 ```typescript
 new_tool: async (args: any) => {
   const { filePath, sheetName } = NewToolSchema.parse(args);
@@ -134,73 +134,73 @@ new_tool: async (args: any) => {
 }
 ```
 
-### Validation Patterns
+### 入力検証パターン
 
 ```typescript
-// File path validation
+// ファイルパス検証
 function validateFilePath(filePath: string): void {
-  if (!filePath) throw new Error("File path not specified");
+  if (!filePath) throw new Error("ファイルパスが指定されていません");
   if (!filePath.endsWith('.xlsx') && !filePath.endsWith('.xls')) {
-    throw new Error("File extension must be .xlsx or .xls");
+    throw new Error("ファイル拡張子は .xlsx または .xls である必要があります");
   }
   if (!path.isAbsolute(filePath)) {
-    throw new Error("Must use absolute path");
+    throw new Error("絶対パスを指定してください");
   }
 }
 
-// Cell address validation (A1 format)
+// セルアドレス検証（A1形式）
 function validateCellAddress(cell: string): void {
   const cellPattern = /^[A-Z]+[1-9]\d*$/;
   if (!cellPattern.test(cell)) {
-    throw new Error(`Invalid cell: '${cell}'. Use format: A1, B2, AA10`);
+    throw new Error(`無効なセル位置: '${cell}'。正しい形式: A1, B2, AA10`);
   }
 }
 
-// Range validation (A1:C3 format)
+// 範囲検証（A1:C3形式）
 function validateRangeAddress(range: string): void {
   const rangePattern = /^[A-Z]+[1-9]\d*:[A-Z]+[1-9]\d*$/;
   if (!rangePattern.test(range)) {
-    throw new Error(`Invalid range: '${range}'. Use format: A1:C3`);
+    throw new Error(`無効な範囲指定: '${range}'。正しい形式: A1:C3`);
   }
 }
 ```
 
-## Critical Constraints
+## 重要な制約事項
 
-### STDIO Communication - No Console.log
+### stdio通信 - console.log禁止
 
-**CRITICAL**: This server uses stdio transport. `console.log()` will corrupt the MCP protocol communication.
+**重要**: このサーバーはstdioトランスポートを使用します。`console.log()` はMCPプロトコル通信を破壊します。
 
 ```typescript
-// NEVER do this:
-console.log("Debug message");  // Breaks MCP protocol!
+// 絶対にやってはいけない:
+console.log("デバッグメッセージ");  // MCPプロトコルが壊れる！
 
-// Use console.error for logging (goes to stderr):
+// ログ出力はconsole.errorを使用（stderrに出力）:
 console.error(JSON.stringify({
   level: 'error',
-  message: 'Operation failed',
+  message: '操作失敗',
   error: error.message
 }));
 ```
 
-### Empty Workbook Behavior
+### 空のワークブック動作
 
-The `create_workbook` tool creates workbooks **without any sheets**. Users must call `add_worksheet` before any cell operations:
+`create_workbook` ツールは**シートなしの**ワークブックを作成します。セル操作前に必ず `add_worksheet` を呼び出してください:
 
 ```
-1. create_workbook -> Creates empty .xlsx file
-2. add_worksheet -> Adds a sheet (REQUIRED before data operations)
-3. set_cell_value -> Now can write data
+1. create_workbook -> 空の.xlsxファイル作成
+2. add_worksheet -> シート追加（データ操作前に必須）
+3. set_cell_value -> データ書き込み可能に
 ```
 
-### File Path Requirements
+### ファイルパス要件
 
-- All file paths must be **absolute paths**
-- Extensions must be `.xlsx` or `.xls`
-- Example: `C:/Users/Username/Documents/report.xlsx`
-- Relative paths are rejected with error
+- 全ファイルパスは**絶対パス**必須
+- 拡張子は `.xlsx` または `.xls` のみ
+- 例: `C:/Users/Username/Documents/report.xlsx`
+- 相対パスはエラーで拒否
 
-## Error Handling Pattern
+## エラーハンドリングパターン
 
 ```typescript
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -210,90 +210,90 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return { content: [{ type: "text", text: result }] };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      // Parameter validation error - provide helpful message
+      // パラメータ検証エラー - 有用なメッセージを提供
       const messages = error.errors.map(e => `${e.path.join('.')}: ${e.message}`);
-      throw new McpError(ErrorCode.InvalidParams, `Argument error:\n${messages.join('\n')}`);
+      throw new McpError(ErrorCode.InvalidParams, `引数エラー:\n${messages.join('\n')}`);
     }
     if (error instanceof McpError) throw error;
-    throw new McpError(ErrorCode.InternalError, `Error: ${error.message}`);
+    throw new McpError(ErrorCode.InternalError, `エラー: ${error.message}`);
   }
 });
 ```
 
-## Testing Guidelines
+## テストガイドライン
 
-### Before Committing
+### コミット前の確認
 ```bash
-npm run build           # Ensure TypeScript compiles
-npm run test:all        # Run all test suites
+npm run build           # TypeScriptがコンパイルできることを確認
+npm run test:all        # 全テストスイート実行
 ```
 
-### Test File Locations
-- Tests output to `test/output/` directory
-- Output files are gitignored
-- Each test creates its own test files
+### テストファイルの場所
+- テスト出力は `test/output/` ディレクトリに保存
+- 出力ファイルはgitignore対象
+- 各テストは独自のテストファイルを作成
 
-### Test Structure
-- `mcp-basic-test.js` - Tests MCP server startup, tool listing, JSONRPC
-- `excel-integration-test.js` - Tests full Excel workflows
-- `tool-individual-test.js` - Tests each of 11 tools individually
+### テスト構成
+- `mcp-basic-test.js` - MCPサーバー起動、ツール一覧、JSONRPC通信
+- `excel-integration-test.js` - Excelワークフロー全体
+- `tool-individual-test.js` - 11ツール各個別テスト
 
-## TypeScript Configuration
+## TypeScript設定
 
-Key settings in `tsconfig.json`:
+`tsconfig.json` の主要設定:
 - **Target**: ES2022
-- **Module**: ESNext with Node resolution
-- **Strict mode**: Enabled
-- **Output**: `dist/` directory
-- **Source**: `src/` directory
+- **Module**: ESNext（Node解決）
+- **Strictモード**: 有効
+- **出力先**: `dist/` ディレクトリ
+- **ソース**: `src/` ディレクトリ
 
-## Common Issues & Solutions
+## よくある問題と解決策
 
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| Workbook read error | File doesn't exist | Check path, use absolute path |
-| Worksheet not found | Wrong sheet name | Use `get_workbook_info` to list sheets |
-| Invalid cell position | Wrong format | Use A1, B2, AA10 format |
-| Extension error | Non-.xlsx/.xls file | Use correct extension |
-| Empty workbook error | No sheets added | Call `add_worksheet` first |
-| Protocol corruption | Using console.log | Use console.error only |
+| 問題 | 原因 | 解決策 |
+|------|------|--------|
+| ワークブック読み込みエラー | ファイルが存在しない | パス確認、絶対パス使用 |
+| ワークシートが見つからない | シート名が間違っている | `get_workbook_info` でシート名確認 |
+| 無効なセル位置 | 形式が間違っている | A1, B2, AA10形式を使用 |
+| 拡張子エラー | .xlsx/.xls以外のファイル | 正しい拡張子を使用 |
+| 空のワークブックエラー | シート未追加 | 先に `add_worksheet` を呼び出す |
+| プロトコル破損 | console.log使用 | console.errorのみ使用 |
 
-## Architecture
+## アーキテクチャ
 
 ```
-AI Agent (Claude, ChatGPT, etc.)
-    ↓ MCP Protocol (JSON-RPC over stdio)
-Excel MCP Server (src/index.ts)
-    ↓ ExcelJS Library
-Excel File (.xlsx)
+AIエージェント（Claude、ChatGPTなど）
+    ↓ MCPプロトコル（stdio経由のJSON-RPC）
+Excel MCPサーバー（src/index.ts）
+    ↓ ExcelJSライブラリ
+Excelファイル（.xlsx）
 ```
 
-## Code Style
+## コードスタイル
 
-- **Single file architecture**: All tool implementations in `src/index.ts`
-- **Tool naming**: `<action>_<target>` pattern (e.g., `set_cell_value`)
-- **Schema naming**: `<ToolName>Schema` pattern (e.g., `SetCellValueSchema`)
-- **Error messages**: Include actionable information (available sheets, correct formats)
-- **Japanese comments**: Source code uses Japanese for comments and messages
-- **Documentation**: User-facing docs in `guide/` are in Japanese
+- **単一ファイル構成**: 全ツール実装は `src/index.ts` に集約
+- **ツール命名**: `<動作>_<対象>` パターン（例: `set_cell_value`）
+- **スキーマ命名**: `<ToolName>Schema` パターン（例: `SetCellValueSchema`）
+- **エラーメッセージ**: 実行可能な情報を含める（利用可能なシート、正しい形式など）
+- **コメント**: ソースコードのコメントとメッセージは日本語
+- **ドキュメント**: `guide/` のユーザー向けドキュメントは日本語
 
-## Dependencies
+## 依存関係
 
 ```json
 {
-  "@modelcontextprotocol/sdk": "^1.17.1",  // MCP protocol implementation
-  "exceljs": "^4.4.0",                      // Excel file manipulation
-  "zod": "^3.25.76",                        // Schema validation
-  "zod-to-json-schema": "^3.24.6",          // Convert Zod to JSON Schema
-  "@types/node": "^24.1.0",                 // Node.js types
-  "typescript": "^5.9.2"                    // TypeScript compiler
+  "@modelcontextprotocol/sdk": "^1.17.1",  // MCPプロトコル実装
+  "exceljs": "^4.4.0",                      // Excelファイル操作
+  "zod": "^3.25.76",                        // スキーマ検証
+  "zod-to-json-schema": "^3.24.6",          // ZodをJSONスキーマに変換
+  "@types/node": "^24.1.0",                 // Node.js型定義
+  "typescript": "^5.9.2"                    // TypeScriptコンパイラ
 }
 ```
 
-## Making Changes
+## 変更を加える際の手順
 
-1. Edit `src/index.ts` for server functionality
-2. Run `npm run build` to compile
-3. Run `npm run test:all` to verify
-4. Test manually with `npm run server:start` if needed
-5. Update relevant documentation in `guide/` if user-facing changes
+1. `src/index.ts` でサーバー機能を編集
+2. `npm run build` でコンパイル
+3. `npm run test:all` で検証
+4. 必要に応じて `npm run server:start` で手動テスト
+5. ユーザー向け変更の場合は `guide/` のドキュメントも更新
