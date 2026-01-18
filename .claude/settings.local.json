@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc)",
+      "Bash(npx typescript:*)",
+      "Bash(npm install:*)",
+      "Bash(./node_modules/.bin/tsc:*)",
+      "Bash(npm run test:all:*)",
+      "Bash(node test/mcp-basic-test.js:*)",
+      "Bash(npm run build:*)"
+    ]
+  }
+}

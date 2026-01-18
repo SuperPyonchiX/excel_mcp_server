@@ -231,3 +231,162 @@ Excelファイルを作って何かデータを入れて
 - **引数エラー**: 必須パラメータが不足している、または型が間違っている
 
 この仕様書を参考に、正確な引数でツールを呼び出してください。
+
+---
+
+## 戻り値形式
+
+すべてのツールは以下の構造化JSON形式でレスポンスを返します。
+
+### 成功時のレスポンス形式
+```json
+{
+  "success": true,
+  "operation": "ツール名",
+  "data": {
+    // 操作結果の詳細データ
+  },
+  "message": "操作完了メッセージ",
+  "nextActions": [
+    "推奨される次のアクション1",
+    "推奨される次のアクション2"
+  ]
+}
+```
+
+### エラー時のレスポンス形式
+```json
+{
+  "error": true,
+  "category": "FILE_NOT_FOUND | SHEET_NOT_FOUND | INVALID_INPUT | FILE_ACCESS | INTERNAL",
+  "message": "エラーメッセージ",
+  "suggestions": [
+    "リカバリー方法1",
+    "リカバリー方法2"
+  ]
+}
+```
+
+### エラーカテゴリ一覧
+
+| カテゴリ | 説明 | 対処法 |
+|---------|------|--------|
+| `FILE_NOT_FOUND` | ファイルが存在しない | ファイルパスを確認、絶対パスを使用 |
+| `SHEET_NOT_FOUND` | シートが存在しない | get_workbook_info でシート名確認 |
+| `INVALID_INPUT` | パラメータ形式エラー | セル位置やパスの形式を確認 |
+| `FILE_ACCESS` | ファイルアクセスエラー | ファイルの読み取り/書き込み権限を確認 |
+| `INTERNAL` | 内部エラー | 再試行または問題報告 |
+
+### 各ツールのdata構造
+
+#### create_workbook
+```json
+{
+  "filePath": "作成されたファイルのパス",
+  "sheetName": "Sheet1",
+  "sheetsCreated": 1
+}
+```
+
+#### get_workbook_info
+```json
+{
+  "filePath": "ファイルパス",
+  "sheetCount": 3,
+  "sheetNames": ["Sheet1", "データ", "集計"],
+  "creator": "作成者名",
+  "lastModifiedBy": "最終更新者名",
+  "created": "2024-01-01T00:00:00.000Z",
+  "modified": "2024-01-15T10:30:00.000Z"
+}
+```
+
+#### set_cell_value
+```json
+{
+  "filePath": "ファイルパス",
+  "sheetName": "シート名",
+  "cell": "A1",
+  "value": "設定した値",
+  "previousValue": "変更前の値（または null）"
+}
+```
+
+#### get_cell_value
+```json
+{
+  "filePath": "ファイルパス",
+  "sheetName": "シート名",
+  "cell": "A1",
+  "value": "取得した値",
+  "valueType": "string | number | boolean | null"
+}
+```
+
+#### set_range_values
+```json
+{
+  "filePath": "ファイルパス",
+  "sheetName": "シート名",
+  "startCell": "A1",
+  "rowCount": 3,
+  "columnCount": 4,
+  "totalCells": 12
+}
+```
+
+#### get_range_values
+```json
+{
+  "filePath": "ファイルパス",
+  "sheetName": "シート名",
+  "range": "A1:C3",
+  "values": [
+    ["値1", "値2", "値3"],
+    ["値4", "値5", "値6"]
+  ],
+  "rowCount": 2,
+  "columnCount": 3
+}
+```
+
+#### find_data
+```json
+{
+  "searchValue": "検索した値",
+  "matchCount": 3,
+  "matches": [
+    {"cell": "A1", "value": "検索値", "row": 1, "column": 1},
+    {"cell": "C5", "value": "検索値", "row": 5, "column": 3}
+  ]
+}
+```
+
+#### format_cell
+```json
+{
+  "filePath": "ファイルパス",
+  "sheetName": "シート名",
+  "cell": "A1",
+  "appliedFormats": ["font", "fill", "border"]
+}
+```
+
+#### add_formula
+```json
+{
+  "filePath": "ファイルパス",
+  "sheetName": "シート名",
+  "cell": "A1",
+  "formula": "=SUM(A1:A10)"
+}
+```
+
+#### export_to_csv
+```json
+{
+  "sourceFile": "元のExcelファイルパス",
+  "sheetName": "エクスポートしたシート名",
+  "csvPath": "出力されたCSVファイルパス"
+}
+```

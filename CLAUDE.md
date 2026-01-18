@@ -183,14 +183,14 @@ console.error(JSON.stringify({
 }));
 ```
 
-### 空のワークブック動作
+### ワークブック作成動作
 
-`create_workbook` ツールは**シートなしの**ワークブックを作成します。セル操作前に必ず `add_worksheet` を呼び出してください:
+`create_workbook` ツールはデフォルトで「Sheet1」シートを含むワークブックを作成します。`sheetName`引数でシート名をカスタマイズできます:
 
 ```
-1. create_workbook -> 空の.xlsxファイル作成
-2. add_worksheet -> シート追加（データ操作前に必須）
-3. set_cell_value -> データ書き込み可能に
+1. create_workbook -> Sheet1を含む.xlsxファイル作成（すぐにデータ操作可能）
+2. create_workbook(sheetName: "売上データ") -> カスタム名のシートを作成
+3. add_worksheet -> 追加のシートが必要な場合に使用
 ```
 
 ### ファイルパス要件

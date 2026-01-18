@@ -7,6 +7,7 @@
 | ツール名 | 機能 | 主な用途 |
 |---------|------|----------|
 | `create_workbook` | ワークブック作成 | 新しいExcelファイルの作成 |
+| `get_workbook_info` | ワークブック情報取得 | シート一覧・メタデータの確認 |
 | `add_worksheet` | ワークシート追加 | 既存ファイルへのシート追加 |
 | `set_cell_value` | セル値設定 | 単一セルへのデータ入力 |
 | `get_cell_value` | セル値取得 | 単一セルのデータ読み取り |
@@ -22,12 +23,13 @@
 ## 1. create_workbook
 
 ### 機能
-新しいExcelワークブックファイルを作成します。
+新しいExcelワークブックファイルを作成します。デフォルトで「Sheet1」という名前のワークシートが作成されます。
 
 ### パラメータ
 | 名前 | 型 | 必須 | 説明 |
 |------|----|----|------|
 | `filePath` | string | ✅ | 作成するExcelファイルのパス |
+| `sheetName` | string | - | 初期ワークシート名（省略時は「Sheet1」） |
 
 ### 使用例
 ```json
@@ -39,19 +41,76 @@
 }
 ```
 
+### カスタムシート名で作成
+```json
+{
+  "name": "create_workbook",
+  "arguments": {
+    "filePath": "C:/Users/Username/Documents/report.xlsx",
+    "sheetName": "売上データ"
+  }
+}
+```
+
 ### AI指示例
 ```
 "新しいExcelファイル 'monthly_report.xlsx' を作成してください"
+"'売上レポート' シートを持つ新しいExcelファイルを作成してください"
 ```
 
 ### 注意事項
 - 既存ファイルは上書きされます
 - ディレクトリが存在しない場合はエラーになります
-- デフォルトで空のワークシートが1つ作成されます
+- デフォルトで「Sheet1」シートが作成されるため、すぐにデータ操作を開始できます
 
 ---
 
-## 2. add_worksheet
+## 2. get_workbook_info
+
+### 機能
+Excelワークブックの詳細情報（シート一覧、メタデータ）を取得します。
+
+### パラメータ
+| 名前 | 型 | 必須 | 説明 |
+|------|----|----|------|
+| `filePath` | string | ✅ | 対象のExcelファイルパス |
+
+### 使用例
+```json
+{
+  "name": "get_workbook_info",
+  "arguments": {
+    "filePath": "C:/Users/Username/Documents/report.xlsx"
+  }
+}
+```
+
+### 戻り値
+```json
+{
+  "ファイルパス": "C:/Users/Username/Documents/report.xlsx",
+  "ワークシート数": 3,
+  "ワークシート名一覧": ["Sheet1", "データ", "集計"],
+  "作成者": "User",
+  "最終更新者": "User",
+  "作成日時": "2024-01-01T00:00:00.000Z",
+  "最終更新日時": "2024-01-15T10:30:00.000Z"
+}
+```
+
+### AI指示例
+```
+"report.xlsx のシート一覧を確認してください"
+```
+
+### 推奨される使用タイミング
+- ファイルを開く前にシート構成を確認
+- 操作対象のシート名を特定
+- ファイルのメタデータを確認
+
+---
+
+## 3. add_worksheet
 
 ### 機能
 既存のワークブックに新しいワークシートを追加します。
@@ -80,7 +139,7 @@
 
 ---
 
-## 3. set_cell_value
+## 4. set_cell_value
 
 ### 機能
 指定されたセルに値を設定します。
@@ -113,7 +172,7 @@
 
 ---
 
-## 4. get_cell_value
+## 5. get_cell_value
 
 ### 機能
 指定されたセルの値を取得します。
@@ -139,7 +198,7 @@
 
 ---
 
-## 5. set_range_values
+## 6. set_range_values
 
 ### 機能
 指定された開始セルから2次元配列のデータを設定します。
@@ -179,7 +238,38 @@
 
 ---
 
-## 6. format_cell
+## 7. get_range_values
+
+### 機能
+指定された範囲のセル値を取得します。
+
+### パラメータ
+| 名前 | 型 | 必須 | 説明 |
+|------|----|----|------|
+| `filePath` | string | ✅ | 対象のExcelファイルパス |
+| `sheetName` | string | ✅ | 対象のワークシート名 |
+| `range` | string | ✅ | 取得する範囲（例: "A1:C3"） |
+
+### 使用例
+```json
+{
+  "name": "get_range_values",
+  "arguments": {
+    "filePath": "C:/Users/Username/Documents/data.xlsx",
+    "sheetName": "Sheet1",
+    "range": "A1:C3"
+  }
+}
+```
+
+### AI指示例
+```
+"Sheet1のA1からC3までのデータを取得してください"
+```
+
+---
+
+## 8. format_cell
 
 ### 機能
 セルの書式（フォント、塗りつぶし、罫線）を設定します。
@@ -255,7 +345,7 @@
 
 ---
 
-## 7. add_formula
+## 9. add_formula
 
 ### 機能
 セルに数式を追加します。
@@ -291,7 +381,7 @@
 
 ---
 
-## 8. find_data
+## 10. find_data
 
 ### 機能
 ワークシート内で指定された値を検索します。
@@ -320,7 +410,7 @@
 
 ---
 
-## 9. export_to_csv
+## 11. export_to_csv
 
 ### 機能
 ワークシートをCSVファイルにエクスポートします。
